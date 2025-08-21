@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { JobApplicationForm } from './JobApplicationForm';
+import { ApplicationCalendar } from './ApplicationCalendar';
 import { format } from 'date-fns';
-import { Trash2, Building, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { Trash2, Building, MapPin, Calendar, DollarSign, FileText, Download } from 'lucide-react';
 
 interface JobApplication {
   id: string;
@@ -25,6 +26,10 @@ interface JobApplication {
   contact_email?: string;
   notes?: string;
   follow_up_date?: string;
+  cv_file_url?: string;
+  cv_file_name?: string;
+  cover_letter_url?: string;
+  cover_letter_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +140,7 @@ export function JobApplicationsList() {
                     <TableHead>Status</TableHead>
                     <TableHead>Date Applied</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Files</TableHead>
                     <TableHead>Salary</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -175,6 +181,30 @@ export function JobApplicationsList() {
                             {app.work_arrangement}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {app.cv_file_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(app.cv_file_url, '_blank')}
+                              title={app.cv_file_name || 'CV'}
+                            >
+                              <FileText className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {app.cover_letter_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(app.cover_letter_url, '_blank')}
+                              title={app.cover_letter_name || 'Cover Letter'}
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {app.salary_range && (
@@ -236,6 +266,34 @@ export function JobApplicationsList() {
                     </div>
                   )}
 
+                  {(app.cv_file_url || app.cover_letter_url) && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="h-4 w-4 mr-2" />
+                      <div className="flex gap-2">
+                        {app.cv_file_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(app.cv_file_url, '_blank')}
+                            className="text-xs p-1 h-auto"
+                          >
+                            CV
+                          </Button>
+                        )}
+                        {app.cover_letter_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(app.cover_letter_url, '_blank')}
+                            className="text-xs p-1 h-auto"
+                          >
+                            Cover Letter
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pt-3">
                     <div className="flex space-x-2">
                       {app.job_type && (
@@ -262,6 +320,13 @@ export function JobApplicationsList() {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+      
+      {/* Application Calendar */}
+      {applications.length > 0 && (
+        <div className="mt-8">
+          <ApplicationCalendar />
         </div>
       )}
     </div>

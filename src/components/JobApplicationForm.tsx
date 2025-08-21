@@ -11,6 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2 } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
+import { FileUpload } from '@/components/FileUpload';
+import { useAutocompleteData } from '@/hooks/useAutocompleteData';
 
 const formSchema = z.object({
   company_name: z.string().min(1, 'Company name is required'),
@@ -27,6 +30,10 @@ const formSchema = z.object({
   contact_email: z.string().email().optional().or(z.literal('')),
   notes: z.string().optional(),
   follow_up_date: z.string().optional(),
+  cv_file_url: z.string().optional(),
+  cv_file_name: z.string().optional(),
+  cover_letter_url: z.string().optional(),
+  cover_letter_name: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -39,12 +46,14 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { companies, positions, applicationMethods, loading: autocompleteLoading } = useAutocompleteData();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       application_status: 'applied',
       application_date: new Date().toISOString().split('T')[0],
+      application_method: 'Company Website',
     },
   });
 
@@ -123,7 +132,15 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
                   <FormItem>
                     <FormLabel>Company Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter company name" {...field} />
+                      <Combobox
+                        options={companies}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select or enter company name..."
+                        searchPlaceholder="Search companies..."
+                        emptyText="No companies found."
+                        allowCustom={true}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -136,7 +153,15 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
                   <FormItem>
                     <FormLabel>Position Title *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter position title" {...field} />
+                      <Combobox
+                        options={positions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select or enter position title..."
+                        searchPlaceholder="Search positions..."
+                        emptyText="No positions found."
+                        allowCustom={true}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -325,12 +350,73 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
                 <FormItem>
                   <FormLabel>Application Method</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., LinkedIn, Company website, Referral" {...field} />
+                    <Combobox
+                      options={applicationMethods}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select application method..."
+                      searchPlaceholder="Search methods..."
+                      emptyText="No methods found."
+                      allowCustom={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* File Uploads */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="cv_file_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <FileUpload
+                        label="CV/Resume"
+                        onFileUploaded={(url, name) => {
+                          field.onChange(url);
+                          form.setValue('cv_file_name', name);
+                        }}
+                        onFileRemoved={() => {
+                          field.onChange('');
+                          form.setValue('cv_file_name', '');
+                        }}
+                        currentFile={field.value ? { url: field.value, name: form.getValues('cv_file_name') || 'CV' } : null}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cover_letter_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <FileUpload
+                        label="Cover Letter"
+                        onFileUploaded={(url, name) => {
+                          field.onChange(url);
+                          form.setValue('cover_letter_name', name);
+                        }}
+                        onFileRemoved={() => {
+                          field.onChange('');
+                          form.setValue('cover_letter_name', '');
+                        }}
+                        currentFile={field.value ? { url: field.value, name: form.getValues('cover_letter_name') || 'Cover Letter' } : null}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
