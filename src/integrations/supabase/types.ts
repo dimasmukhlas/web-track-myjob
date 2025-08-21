@@ -22,7 +22,11 @@ export type Database = {
           company_name: string
           contact_email: string | null
           contact_person: string | null
+          cover_letter_name: string | null
+          cover_letter_url: string | null
           created_at: string
+          cv_file_name: string | null
+          cv_file_url: string | null
           follow_up_date: string | null
           id: string
           job_description: string | null
@@ -42,7 +46,11 @@ export type Database = {
           company_name: string
           contact_email?: string | null
           contact_person?: string | null
+          cover_letter_name?: string | null
+          cover_letter_url?: string | null
           created_at?: string
+          cv_file_name?: string | null
+          cv_file_url?: string | null
           follow_up_date?: string | null
           id?: string
           job_description?: string | null
@@ -62,7 +70,11 @@ export type Database = {
           company_name?: string
           contact_email?: string | null
           contact_person?: string | null
+          cover_letter_name?: string | null
+          cover_letter_url?: string | null
           created_at?: string
+          cv_file_name?: string | null
+          cv_file_url?: string | null
           follow_up_date?: string | null
           id?: string
           job_description?: string | null

@@ -89,6 +89,10 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
         contact_email: data.contact_email || null,
         notes: data.notes || null,
         follow_up_date: data.follow_up_date || null,
+        cv_file_url: data.cv_file_url || null,
+        cv_file_name: data.cv_file_name || null,
+        cover_letter_url: data.cover_letter_url || null,
+        cover_letter_name: data.cover_letter_name || null,
       });
 
     if (error) {
