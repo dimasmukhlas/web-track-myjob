@@ -7,8 +7,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { JobApplicationForm } from './JobApplicationForm';
 import { ApplicationCalendar } from './ApplicationCalendar';
+import { ApplicationAnalyticsChart } from './ApplicationAnalyticsChart';
 import { format } from 'date-fns';
-import { Trash2, Building, MapPin, Calendar, DollarSign, FileText, Download } from 'lucide-react';
+import { Trash2, Building, MapPin, Calendar, DollarSign, FileText, Download, Edit } from 'lucide-react';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface JobApplication {
   id: string;
@@ -37,13 +46,17 @@ interface JobApplication {
 export function JobApplicationsList() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingApplication, setEditingApplication] = useState<JobApplication | null>(null);
   const { toast } = useToast();
+  
+  const itemsPerPage = 10;
 
   const fetchApplications = async () => {
     const { data, error } = await supabase
       .from('job_applications')
       .select('*')
-      .order('application_date', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       toast({
@@ -53,6 +66,7 @@ export function JobApplicationsList() {
       });
     } else {
       setApplications(data || []);
+      setCurrentPage(1); // Reset to first page when data changes
     }
     setLoading(false);
   };
@@ -81,6 +95,20 @@ export function JobApplicationsList() {
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  // Pagination logic
+  const totalPages = Math.ceil(applications.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedApplications = applications.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleEditClick = (application: JobApplication) => {
+    setEditingApplication(application);
+  };
+
+  const handleEditSuccess = () => {
+    setEditingApplication(null);
+    fetchApplications();
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,6 +143,13 @@ export function JobApplicationsList() {
           <p className="text-muted-foreground">Track and manage your job applications</p>
         </div>
         <JobApplicationForm onSuccess={fetchApplications} />
+        {editingApplication && (
+          <JobApplicationForm 
+            onSuccess={handleEditSuccess} 
+            editingApplication={editingApplication}
+            onCancel={() => setEditingApplication(null)}
+          />
+        )}
       </div>
 
       {applications.length === 0 ? (
@@ -146,8 +181,12 @@ export function JobApplicationsList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications.map((app) => (
-                    <TableRow key={app.id}>
+                  {paginatedApplications.map((app) => (
+                    <TableRow 
+                      key={app.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleEditClick(app)}
+                    >
                       <TableCell>
                         <div>
                           <div className="font-semibold">{app.company_name}</div>
@@ -215,14 +254,29 @@ export function JobApplicationsList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteApplication(app.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(app);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteApplication(app.id);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -233,8 +287,12 @@ export function JobApplicationsList() {
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
-            {applications.map((app) => (
-              <Card key={app.id}>
+            {paginatedApplications.map((app) => (
+              <Card 
+                key={app.id} 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleEditClick(app)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -307,26 +365,77 @@ export function JobApplicationsList() {
                         </Badge>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteApplication(app.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(app);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteApplication(app.id);
+                        }}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Pagination */}
+          {applications.length > itemsPerPage && (
+            <div className="mt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       )}
       
-      {/* Application Calendar */}
+      {/* Analytics Section */}
       {applications.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ApplicationCalendar />
+          <ApplicationAnalyticsChart />
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -40,17 +40,38 @@ type FormData = z.infer<typeof formSchema>;
 
 interface JobApplicationFormProps {
   onSuccess: () => void;
+  editingApplication?: any;
+  onCancel?: () => void;
 }
 
-export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
-  const [open, setOpen] = useState(false);
+export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: JobApplicationFormProps) {
+  const [open, setOpen] = useState(!!editingApplication);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { companies, positions, applicationMethods, loading: autocompleteLoading } = useAutocompleteData();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: editingApplication ? {
+      company_name: editingApplication.company_name,
+      position_title: editingApplication.position_title,
+      job_description: editingApplication.job_description || '',
+      application_date: editingApplication.application_date,
+      application_status: editingApplication.application_status,
+      job_location: editingApplication.job_location || '',
+      salary_range: editingApplication.salary_range || '',
+      job_type: editingApplication.job_type || undefined,
+      work_arrangement: editingApplication.work_arrangement || undefined,
+      application_method: editingApplication.application_method || '',
+      contact_person: editingApplication.contact_person || '',
+      contact_email: editingApplication.contact_email || '',
+      notes: editingApplication.notes || '',
+      follow_up_date: editingApplication.follow_up_date || '',
+      cv_file_url: editingApplication.cv_file_url || '',
+      cv_file_name: editingApplication.cv_file_name || '',
+      cover_letter_url: editingApplication.cover_letter_url || '',
+      cover_letter_name: editingApplication.cover_letter_name || '',
+    } : {
       application_status: 'applied',
       application_date: new Date().toISOString().split('T')[0],
       application_method: 'Company Website',
@@ -71,40 +92,46 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
       return;
     }
 
-    const { error } = await supabase
-      .from('job_applications')
-      .insert({
-        user_id: user.id,
-        company_name: data.company_name,
-        position_title: data.position_title,
-        job_description: data.job_description || null,
-        application_date: data.application_date,
-        application_status: data.application_status,
-        job_location: data.job_location || null,
-        salary_range: data.salary_range || null,
-        job_type: data.job_type || null,
-        work_arrangement: data.work_arrangement || null,
-        application_method: data.application_method || null,
-        contact_person: data.contact_person || null,
-        contact_email: data.contact_email || null,
-        notes: data.notes || null,
-        follow_up_date: data.follow_up_date || null,
-        cv_file_url: data.cv_file_url || null,
-        cv_file_name: data.cv_file_name || null,
-        cover_letter_url: data.cover_letter_url || null,
-        cover_letter_name: data.cover_letter_name || null,
-      });
+    const applicationData = {
+      company_name: data.company_name,
+      position_title: data.position_title,
+      job_description: data.job_description || null,
+      application_date: data.application_date,
+      application_status: data.application_status,
+      job_location: data.job_location || null,
+      salary_range: data.salary_range || null,
+      job_type: data.job_type || null,
+      work_arrangement: data.work_arrangement || null,
+      application_method: data.application_method || null,
+      contact_person: data.contact_person || null,
+      contact_email: data.contact_email || null,
+      notes: data.notes || null,
+      follow_up_date: data.follow_up_date || null,
+      cv_file_url: data.cv_file_url || null,
+      cv_file_name: data.cv_file_name || null,
+      cover_letter_url: data.cover_letter_url || null,
+      cover_letter_name: data.cover_letter_name || null,
+    };
+
+    const { error } = editingApplication
+      ? await supabase
+          .from('job_applications')
+          .update(applicationData)
+          .eq('id', editingApplication.id)
+      : await supabase
+          .from('job_applications')
+          .insert({ ...applicationData, user_id: user.id });
 
     if (error) {
       toast({
         title: 'Error',
-        description: 'Failed to save job application. Please try again.',
+        description: `Failed to ${editingApplication ? 'update' : 'save'} job application. Please try again.`,
         variant: 'destructive',
       });
     } else {
       toast({
         title: 'Success',
-        description: 'Job application added successfully!',
+        description: `Job application ${editingApplication ? 'updated' : 'added'} successfully!`,
       });
       form.reset();
       setOpen(false);
@@ -114,17 +141,37 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
     setLoading(false);
   };
 
+  // Close dialog when editingApplication changes to null
+  useEffect(() => {
+    if (editingApplication) {
+      setOpen(true);
+    } else if (onCancel) {
+      setOpen(false);
+    }
+  }, [editingApplication, onCancel]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen && onCancel) {
+      onCancel();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Application
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {!editingApplication && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Application
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Job Application</DialogTitle>
+          <DialogTitle>
+            {editingApplication ? 'Edit Job Application' : 'Add New Job Application'}
+          </DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -437,12 +484,12 @@ export function JobApplicationForm({ onSuccess }: JobApplicationFormProps) {
             />
 
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Application
+                {editingApplication ? 'Update Application' : 'Add Application'}
               </Button>
             </div>
           </form>
