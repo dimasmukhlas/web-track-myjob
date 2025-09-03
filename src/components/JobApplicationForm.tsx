@@ -22,6 +22,7 @@ const formSchema = z.object({
   application_date: z.string().min(1, 'Application date is required'),
   application_status: z.enum(['applied', 'interview', 'offer', 'rejected', 'withdrawn']),
   job_location: z.string().optional(),
+  job_link: z.string().optional(),
   salary_range: z.string().optional(),
   job_type: z.enum(['full-time', 'part-time', 'contract', 'internship', 'freelance']).optional(),
   work_arrangement: z.enum(['remote', 'hybrid', 'onsite']).optional(),
@@ -59,6 +60,7 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       application_date: editingApplication.application_date,
       application_status: editingApplication.application_status,
       job_location: editingApplication.job_location || '',
+      job_link: editingApplication.job_link || '',
       salary_range: editingApplication.salary_range || '',
       job_type: editingApplication.job_type || undefined,
       work_arrangement: editingApplication.work_arrangement || undefined,
@@ -99,6 +101,7 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       application_date: data.application_date,
       application_status: data.application_status,
       job_location: data.job_location || null,
+      job_link: data.job_link || null,
       salary_range: data.salary_range || null,
       job_type: data.job_type || null,
       work_arrangement: data.work_arrangement || null,
@@ -290,18 +293,32 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
               />
               <FormField
                 control={form.control}
-                name="salary_range"
+                name="job_link"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Salary Range</FormLabel>
+                    <FormLabel>Job Link</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., $50,000 - $70,000" {...field} />
+                      <Input placeholder="https://example.com/job-posting" {...field} type="url" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="salary_range"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Salary Range</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., $50,000 - $70,000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField

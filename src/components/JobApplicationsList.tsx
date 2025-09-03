@@ -27,6 +27,7 @@ interface JobApplication {
   application_date: string;
   application_status: string;
   job_location?: string;
+  job_link?: string;
   salary_range?: string;
   job_type?: string;
   work_arrangement?: string;
@@ -175,6 +176,7 @@ export function JobApplicationsList() {
                     <TableHead>Status</TableHead>
                     <TableHead>Date Applied</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Job Link</TableHead>
                     <TableHead>Files</TableHead>
                     <TableHead>Salary</TableHead>
                     <TableHead>Actions</TableHead>
@@ -219,6 +221,21 @@ export function JobApplicationsList() {
                           <Badge variant="secondary" className="text-xs mt-1">
                             {app.work_arrangement}
                           </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {app.job_link ? (
+                          <a 
+                            href={app.job_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80 underline text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View Job
+                          </a>
+                        ) : (
+                          "-"
                         )}
                       </TableCell>
                       <TableCell>

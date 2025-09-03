@@ -30,6 +30,7 @@ export type Database = {
           follow_up_date: string | null
           id: string
           job_description: string | null
+          job_link: string | null
           job_location: string | null
           job_type: string | null
           notes: string | null
@@ -54,6 +55,7 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           job_description?: string | null
+          job_link?: string | null
           job_location?: string | null
           job_type?: string | null
           notes?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           job_description?: string | null
+          job_link?: string | null
           job_location?: string | null
           job_type?: string | null
           notes?: string | null
