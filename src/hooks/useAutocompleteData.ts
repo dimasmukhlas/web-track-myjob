@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/database';
 import { ComboboxOption } from '@/components/ui/combobox';
 
 const DEFAULT_COMPANIES = [
@@ -30,20 +30,8 @@ export const useAutocompleteData = () => {
 
   const fetchAutocompleteData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        // Set default values if user not authenticated
-        setDefaultValues();
-        return;
-      }
-
       // Fetch unique values from user's existing applications
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('company_name, position_title, application_method')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      const data = await db.getAutocompleteData();
 
       // Extract unique companies
       const uniqueCompanies = Array.from(

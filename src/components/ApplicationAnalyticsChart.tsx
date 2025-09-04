@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/database';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, min, max } from 'date-fns';
 
 interface ChartData {
   date: string;
@@ -20,25 +20,34 @@ interface ApplicationData {
 export const ApplicationAnalyticsChart: React.FC = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate] = useState<Date>(new Date());
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
 
   const fetchAnalyticsData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // First, get all applications to determine the date range
+      const allApplications = await db.getJobApplications();
+      
+      if (allApplications.length === 0) {
+        setChartData([]);
+        setLoading(false);
+        return;
+      }
 
-      const startDate = startOfMonth(selectedDate);
-      const endDate = endOfMonth(selectedDate);
+      // Find the earliest and latest application dates
+      const applicationDates = allApplications.map(app => parseISO(app.application_date));
+      const earliestDate = min(applicationDates);
+      const latestDate = max(applicationDates);
+      
+      // Set the date range from first application to now (or latest application)
+      const startDate = earliestDate;
+      const endDate = latestDate > new Date() ? latestDate : new Date();
+      
+      setDateRange({ start: startDate, end: endDate });
 
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('application_date, application_status, updated_at, created_at')
-        .eq('user_id', user.id)
-        .gte('application_date', format(startDate, 'yyyy-MM-dd'))
-        .lte('application_date', format(endDate, 'yyyy-MM-dd'))
-        .order('application_date', { ascending: true });
-
-      if (error) throw error;
+      const data = await db.getJobApplicationsForAnalytics(
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate, 'yyyy-MM-dd')
+      );
 
       // Generate all days in the month
       const allDays = eachDayOfInterval({ start: startDate, end: endDate });
@@ -85,7 +94,7 @@ export const ApplicationAnalyticsChart: React.FC = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [selectedDate]);
+  }, []);
 
   if (loading) {
     return (
@@ -100,15 +109,41 @@ export const ApplicationAnalyticsChart: React.FC = () => {
     );
   }
 
+  // Calculate summary statistics
+  const totalApplications = chartData.reduce((sum, day) => sum + day.applications, 0);
+  const totalRejections = chartData.reduce((sum, day) => sum + day.rejections, 0);
+  const daysSinceFirstApplication = dateRange ? differenceInDays(new Date(), dateRange.start) : 0;
+  const applicationsPerWeek = daysSinceFirstApplication > 0 ? (totalApplications / (daysSinceFirstApplication / 7)).toFixed(1) : '0';
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Application Analytics</CardTitle>
+        <CardTitle>Job Application Journey</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Track your application trends and review times
+          Your application activity from {dateRange ? format(dateRange.start, 'MMM dd, yyyy') : 'start'} to now
         </p>
       </CardHeader>
       <CardContent>
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-primary">{totalApplications}</div>
+            <div className="text-sm text-muted-foreground">Total Applications</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-destructive">{totalRejections}</div>
+            <div className="text-sm text-muted-foreground">Rejections</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">{totalApplications - totalRejections}</div>
+            <div className="text-sm text-muted-foreground">Still Pending</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{applicationsPerWeek}</div>
+            <div className="text-sm text-muted-foreground">Per Week</div>
+          </div>
+        </div>
+
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/database';
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
 
 interface ApplicationCount {
@@ -24,21 +24,13 @@ export const ApplicationCalendar: React.FC<ApplicationCalendarProps> = ({
 
   const fetchApplicationCounts = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const startDate = startOfMonth(selectedDate || new Date());
       const endDate = endOfMonth(selectedDate || new Date());
 
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('application_date, company_name, position_title')
-        .eq('user_id', user.id)
-        .gte('application_date', format(startDate, 'yyyy-MM-dd'))
-        .lte('application_date', format(endDate, 'yyyy-MM-dd'))
-        .order('application_date', { ascending: true });
-
-      if (error) throw error;
+      const data = await db.getJobApplicationsForCalendar(
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate, 'yyyy-MM-dd')
+      );
 
       // Group by date and count
       const counts = data.reduce((acc: Record<string, any[]>, app) => {

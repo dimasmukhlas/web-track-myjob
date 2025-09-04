@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/database';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
@@ -82,17 +82,6 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please sign in to add job applications.',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
-    }
 
     const applicationData = {
       company_name: data.company_name,
@@ -116,22 +105,13 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       cover_letter_name: data.cover_letter_name || null,
     };
 
-    const { error } = editingApplication
-      ? await supabase
-          .from('job_applications')
-          .update(applicationData)
-          .eq('id', editingApplication.id)
-      : await supabase
-          .from('job_applications')
-          .insert({ ...applicationData, user_id: user.id });
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: `Failed to ${editingApplication ? 'update' : 'save'} job application. Please try again.`,
-        variant: 'destructive',
-      });
-    } else {
+    try {
+      if (editingApplication) {
+        await db.updateJobApplication(editingApplication.id, applicationData);
+      } else {
+        await db.createJobApplication(applicationData);
+      }
+      
       toast({
         title: 'Success',
         description: `Job application ${editingApplication ? 'updated' : 'added'} successfully!`,
@@ -139,6 +119,12 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       form.reset();
       setOpen(false);
       onSuccess();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${editingApplication ? 'update' : 'save'} job application. Please try again.`,
+        variant: 'destructive',
+      });
     }
     
     setLoading(false);
@@ -164,27 +150,36 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!editingApplication && (
         <DialogTrigger asChild>
-          <Button>
+          <Button className="apple-button bg-blue-600 hover:bg-blue-700 text-white font-medium h-11 px-6 rounded-xl shadow-lg">
             <Plus className="mr-2 h-4 w-4" />
             Add Application
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto glass border-0 shadow-2xl"
+        aria-describedby="job-application-form-description"
+      >
+        <DialogHeader className="space-y-4 pb-6">
+          <DialogTitle className="text-2xl font-bold apple-heading text-gray-900">
             {editingApplication ? 'Edit Job Application' : 'Add New Job Application'}
           </DialogTitle>
+          <p className="text-gray-600 apple-text">
+            {editingApplication ? 'Update your job application details' : 'Track your next job application with all the important details'}
+          </p>
+          <p id="job-application-form-description" className="sr-only">
+            {editingApplication ? 'Edit the details of your job application' : 'Fill out the form to add a new job application to your tracking list'}
+          </p>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="company_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Name *</FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Company Name *</FormLabel>
                     <FormControl>
                       <Combobox
                         options={companies}
@@ -205,7 +200,7 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
                 name="position_title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Position Title *</FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-700">Position Title *</FormLabel>
                     <FormControl>
                       <Combobox
                         options={positions}
@@ -500,11 +495,20 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
               )}
             />
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => handleOpenChange(false)}
+                className="apple-button border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 h-11 px-6"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="apple-button bg-blue-600 hover:bg-blue-700 text-white font-medium h-11 px-6"
+              >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingApplication ? 'Update Application' : 'Add Application'}
               </Button>

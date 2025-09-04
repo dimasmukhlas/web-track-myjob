@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/database';
 import { useToast } from '@/hooks/use-toast';
 import { JobApplicationForm } from './JobApplicationForm';
 import { ApplicationCalendar } from './ApplicationCalendar';
@@ -54,42 +54,34 @@ export function JobApplicationsList() {
   const itemsPerPage = 10;
 
   const fetchApplications = async () => {
-    const { data, error } = await supabase
-      .from('job_applications')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await db.getJobApplications();
+      setApplications(data || []);
+      setCurrentPage(1); // Reset to first page when data changes
+    } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to fetch job applications.',
         variant: 'destructive',
       });
-    } else {
-      setApplications(data || []);
-      setCurrentPage(1); // Reset to first page when data changes
     }
     setLoading(false);
   };
 
   const deleteApplication = async (id: string) => {
-    const { error } = await supabase
-      .from('job_applications')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete application.',
-        variant: 'destructive',
-      });
-    } else {
+    try {
+      await db.deleteJobApplication(id);
       toast({
         title: 'Success',
         description: 'Application deleted successfully.',
       });
       fetchApplications();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete application.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -130,36 +122,43 @@ export function JobApplicationsList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading applications...</div>
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="text-gray-600 font-medium">Loading applications...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Job Applications</h2>
-          <p className="text-muted-foreground">Track and manage your job applications</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold apple-heading text-gray-900">Job Applications</h2>
+          <p className="text-gray-600 apple-text">Track and manage your job search journey</p>
         </div>
-        <JobApplicationForm onSuccess={fetchApplications} />
-        {editingApplication && (
-          <JobApplicationForm 
-            onSuccess={handleEditSuccess} 
-            editingApplication={editingApplication}
-            onCancel={() => setEditingApplication(null)}
-          />
-        )}
+        <div className="flex gap-3">
+          <JobApplicationForm onSuccess={fetchApplications} />
+          {editingApplication && (
+            <JobApplicationForm 
+              onSuccess={handleEditSuccess} 
+              editingApplication={editingApplication}
+              onCancel={() => setEditingApplication(null)}
+            />
+          )}
+        </div>
       </div>
 
       {applications.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No applications yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Start tracking your job applications by adding your first application.
+        <Card className="apple-card border-0 shadow-xl">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center mb-6">
+              <Building className="h-10 w-10 text-blue-600" />
+            </div>
+            <h3 className="text-2xl font-bold apple-heading text-gray-900 mb-3">No applications yet</h3>
+            <p className="text-gray-600 apple-text text-center mb-8 max-w-md">
+              Start your job search journey by adding your first application. Track your progress and stay organized.
             </p>
             <JobApplicationForm onSuccess={fetchApplications} />
           </CardContent>
@@ -168,25 +167,25 @@ export function JobApplicationsList() {
         <div className="grid gap-6">
           {/* Desktop Table View */}
           <div className="hidden lg:block">
-            <Card>
+            <Card className="apple-card border-0 shadow-lg">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Company & Position</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date Applied</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Job Link</TableHead>
-                    <TableHead>Files</TableHead>
-                    <TableHead>Salary</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="border-b border-gray-100">
+                    <TableHead className="font-semibold text-gray-700">Company & Position</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Date Applied</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Location</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Job Link</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Files</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Salary</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedApplications.map((app) => (
                     <TableRow 
                       key={app.id} 
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-blue-50/50 transition-colors duration-200 border-b border-gray-50"
                       onClick={() => handleEditClick(app)}
                     >
                       <TableCell>
@@ -307,50 +306,50 @@ export function JobApplicationsList() {
             {paginatedApplications.map((app) => (
               <Card 
                 key={app.id} 
-                className="cursor-pointer hover:bg-muted/50"
+                className="apple-card cursor-pointer hover:shadow-lg transition-all duration-300 border-0"
                 onClick={() => handleEditClick(app)}
               >
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{app.company_name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{app.position_title}</p>
+                    <div className="space-y-2">
+                      <CardTitle className="text-xl font-bold text-gray-900">{app.company_name}</CardTitle>
+                      <p className="text-gray-600 font-medium">{app.position_title}</p>
                     </div>
-                    <Badge className={getStatusColor(app.application_status)}>
+                    <Badge className={`${getStatusColor(app.application_status)} font-medium px-3 py-1 rounded-full`}>
                       {app.application_status.charAt(0).toUpperCase() + app.application_status.slice(1)}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4 mr-2" />
+                <CardContent className="space-y-4">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Calendar className="h-4 w-4 mr-3 text-blue-500" />
                     Applied on {format(new Date(app.application_date), 'MMM dd, yyyy')}
                   </div>
                   
                   {app.job_location && (
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4 mr-2" />
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin className="h-4 w-4 mr-3 text-green-500" />
                       {app.job_location}
                     </div>
                   )}
                   
                   {app.salary_range && (
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <DollarSign className="h-4 w-4 mr-2" />
+                    <div className="flex items-center text-sm text-gray-600">
+                      <DollarSign className="h-4 w-4 mr-3 text-emerald-500" />
                       {app.salary_range}
                     </div>
                   )}
 
                   {(app.cv_file_url || app.cover_letter_url) && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4 mr-2" />
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <FileText className="h-4 w-4 mr-1 text-purple-500" />
                       <div className="flex gap-2">
                         {app.cv_file_url && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(app.cv_file_url, '_blank')}
-                            className="text-xs p-1 h-auto"
+                            className="text-xs px-3 py-1 h-auto bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full"
                           >
                             CV
                           </Button>
@@ -360,7 +359,7 @@ export function JobApplicationsList() {
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(app.cover_letter_url, '_blank')}
-                            className="text-xs p-1 h-auto"
+                            className="text-xs px-3 py-1 h-auto bg-green-50 text-green-600 hover:bg-green-100 rounded-full"
                           >
                             Cover Letter
                           </Button>
@@ -369,20 +368,20 @@ export function JobApplicationsList() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-3">
-                    <div className="flex space-x-2">
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                    <div className="flex gap-2">
                       {app.job_type && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs px-2 py-1 bg-gray-50 text-gray-600 border-gray-200">
                           {app.job_type}
                         </Badge>
                       )}
                       {app.work_arrangement && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600">
                           {app.work_arrangement}
                         </Badge>
                       )}
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -390,6 +389,7 @@ export function JobApplicationsList() {
                           e.stopPropagation();
                           handleEditClick(app);
                         }}
+                        className="h-8 w-8 p-0 hover:bg-blue-50 text-blue-600"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -400,7 +400,7 @@ export function JobApplicationsList() {
                           e.stopPropagation();
                           deleteApplication(app.id);
                         }}
-                        className="text-destructive hover:text-destructive"
+                        className="h-8 w-8 p-0 hover:bg-red-50 text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -450,9 +450,13 @@ export function JobApplicationsList() {
       
       {/* Analytics Section */}
       {applications.length > 0 && (
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ApplicationCalendar />
-          <ApplicationAnalyticsChart />
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="apple-fade-in">
+            <ApplicationCalendar />
+          </div>
+          <div className="apple-fade-in" style={{ animationDelay: '0.2s' }}>
+            <ApplicationAnalyticsChart />
+          </div>
         </div>
       )}
     </div>
