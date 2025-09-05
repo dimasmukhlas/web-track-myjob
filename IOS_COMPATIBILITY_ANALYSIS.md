@@ -219,3 +219,4 @@ ON public.job_applications(application_status, application_date);
 
 **The current database structure is definitely ready for iOS development!** 🎉
 
+

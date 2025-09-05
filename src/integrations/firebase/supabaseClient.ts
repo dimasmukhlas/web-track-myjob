@@ -44,3 +44,4 @@ export class FirebaseSupabaseClient {
 // Export singleton instance
 export const firebaseSupabase = new FirebaseSupabaseClient();
 
+

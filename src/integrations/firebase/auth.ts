@@ -16,3 +16,4 @@ export const getCurrentUserSync = (): User | null => {
   return auth.currentUser;
 };
 
+

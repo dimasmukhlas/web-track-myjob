@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           application_date: string
           application_method: string | null
+          application_sent_date: string | null
           application_status: string
+          area_of_work: string | null
           company_name: string
           contact_email: string | null
           contact_person: string | null
@@ -27,23 +29,32 @@ export type Database = {
           created_at: string
           cv_file_name: string | null
           cv_file_url: string | null
+          first_response_date: string | null
           follow_up_date: string | null
           id: string
+          interview_completed_date: string | null
+          interview_scheduled_date: string | null
           job_description: string | null
           job_link: string | null
           job_location: string | null
           job_type: string | null
           notes: string | null
+          offer_deadline_date: string | null
+          offer_received_date: string | null
           position_title: string
+          rejection_date: string | null
           salary_range: string | null
           updated_at: string
           user_id: string
+          withdrawal_date: string | null
           work_arrangement: string | null
         }
         Insert: {
           application_date?: string
           application_method?: string | null
+          application_sent_date?: string | null
           application_status?: string
+          area_of_work?: string | null
           company_name: string
           contact_email?: string | null
           contact_person?: string | null
@@ -52,23 +63,32 @@ export type Database = {
           created_at?: string
           cv_file_name?: string | null
           cv_file_url?: string | null
+          first_response_date?: string | null
           follow_up_date?: string | null
           id?: string
+          interview_completed_date?: string | null
+          interview_scheduled_date?: string | null
           job_description?: string | null
           job_link?: string | null
           job_location?: string | null
           job_type?: string | null
           notes?: string | null
+          offer_deadline_date?: string | null
+          offer_received_date?: string | null
           position_title: string
+          rejection_date?: string | null
           salary_range?: string | null
           updated_at?: string
           user_id: string
+          withdrawal_date?: string | null
           work_arrangement?: string | null
         }
         Update: {
           application_date?: string
           application_method?: string | null
+          application_sent_date?: string | null
           application_status?: string
+          area_of_work?: string | null
           company_name?: string
           contact_email?: string | null
           contact_person?: string | null
@@ -77,17 +97,24 @@ export type Database = {
           created_at?: string
           cv_file_name?: string | null
           cv_file_url?: string | null
+          first_response_date?: string | null
           follow_up_date?: string | null
           id?: string
+          interview_completed_date?: string | null
+          interview_scheduled_date?: string | null
           job_description?: string | null
           job_link?: string | null
           job_location?: string | null
           job_type?: string | null
           notes?: string | null
+          offer_deadline_date?: string | null
+          offer_received_date?: string | null
           position_title?: string
+          rejection_date?: string | null
           salary_range?: string | null
           updated_at?: string
           user_id?: string
+          withdrawal_date?: string | null
           work_arrangement?: string | null
         }
         Relationships: []

@@ -74,3 +74,4 @@ To test the migration:
 - The existing Supabase RLS policies may need adjustment for Firebase UIDs
 - File storage still uses Supabase Storage with Firebase Auth for user identification
 
+

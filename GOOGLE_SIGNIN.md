@@ -108,3 +108,4 @@ Potential future improvements:
 - Add social profile information to user profiles
 - Implement Google One Tap for seamless sign-in
 
+

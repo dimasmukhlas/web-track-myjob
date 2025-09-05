@@ -18,10 +18,17 @@ const DEFAULT_APPLICATION_METHODS = [
   'Job Fair', 'Recruiter', 'Direct Email', 'GitHub Jobs', 'Stack Overflow Jobs'
 ];
 
+const DEFAULT_AREAS_OF_WORK = [
+  'Finance', 'Product Manager', 'Project Manager', 'Software Engineering', 'Data Science',
+  'Marketing', 'Sales', 'Human Resources', 'Operations', 'Design', 'Consulting',
+  'Healthcare', 'Education', 'Real Estate', 'Manufacturing', 'Retail', 'Media'
+];
+
 export const useAutocompleteData = () => {
   const [companies, setCompanies] = useState<ComboboxOption[]>([]);
   const [positions, setPositions] = useState<ComboboxOption[]>([]);
   const [applicationMethods, setApplicationMethods] = useState<ComboboxOption[]>([]);
+  const [areasOfWork, setAreasOfWork] = useState<ComboboxOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,9 +64,18 @@ export const useAutocompleteData = () => {
         ])
       ).map(method => ({ value: method, label: method }));
 
+      // Extract unique areas of work
+      const uniqueAreasOfWork = Array.from(
+        new Set([
+          ...DEFAULT_AREAS_OF_WORK,
+          ...data.map(app => app.area_of_work).filter(Boolean)
+        ])
+      ).map(area => ({ value: area, label: area }));
+
       setCompanies(uniqueCompanies);
       setPositions(uniquePositions);
       setApplicationMethods(uniqueMethods);
+      setAreasOfWork(uniqueAreasOfWork);
     } catch (error) {
       console.error('Error fetching autocomplete data:', error);
       setDefaultValues();
@@ -72,6 +88,7 @@ export const useAutocompleteData = () => {
     setCompanies(DEFAULT_COMPANIES.map(company => ({ value: company, label: company })));
     setPositions(DEFAULT_POSITIONS.map(position => ({ value: position, label: position })));
     setApplicationMethods(DEFAULT_APPLICATION_METHODS.map(method => ({ value: method, label: method })));
+    setAreasOfWork(DEFAULT_AREAS_OF_WORK.map(area => ({ value: area, label: area })));
     setLoading(false);
   };
 
@@ -79,6 +96,7 @@ export const useAutocompleteData = () => {
     companies,
     positions,
     applicationMethods,
+    areasOfWork,
     loading,
     refetch: fetchAutocompleteData
   };

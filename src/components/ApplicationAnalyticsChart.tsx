@@ -8,13 +8,23 @@ interface ChartData {
   date: string;
   applications: number;
   rejections: number;
-  avgReviewTime: number;
+  interviews: number;
+  offers: number;
+  responses: number;
+  pending: number;
 }
 
 interface ApplicationData {
   application_date: string;
   application_status: string;
   updated_at: string;
+  application_sent_date?: string;
+  first_response_date?: string;
+  interview_scheduled_date?: string;
+  interview_completed_date?: string;
+  offer_received_date?: string;
+  rejection_date?: string;
+  withdrawal_date?: string;
 }
 
 export const ApplicationAnalyticsChart: React.FC = () => {
@@ -59,28 +69,34 @@ export const ApplicationAnalyticsChart: React.FC = () => {
         // Count applications for this day
         const applicationsCount = dayApplications.length;
         
-        // Count rejections for this day
+        // Count different statuses for this day
         const rejectionsCount = dayApplications.filter(app => app.application_status === 'rejected').length;
+        const interviewsCount = dayApplications.filter(app => app.application_status === 'interview').length;
+        const offersCount = dayApplications.filter(app => app.application_status === 'offer').length;
         
-        // Calculate average review time for applications on this day
-        const reviewTimes = dayApplications
-          .filter(app => app.application_status !== 'applied') // Exclude still pending applications
-          .map(app => {
-            const appDate = parseISO(app.application_date);
-            const updateDate = parseISO(app.updated_at);
-            return differenceInDays(updateDate, appDate);
-          })
-          .filter(days => days >= 0); // Only positive values
+        // Count responses (applications that got first response on this day)
+        const responsesCount = dayApplications.filter(app => 
+          app.first_response_date === dayStr
+        ).length;
         
-        const avgReviewTime = reviewTimes.length > 0 
-          ? Math.round(reviewTimes.reduce((sum, days) => sum + days, 0) / reviewTimes.length)
-          : 0;
+        // Count pending applications (applied but no response yet)
+        const pendingCount = data.filter(app => 
+          parseISO(app.application_date) <= day && 
+          app.application_status === 'applied' &&
+          !app.first_response_date &&
+          !app.rejection_date && 
+          !app.offer_received_date && 
+          !app.withdrawal_date
+        ).length;
 
         return {
           date: format(day, 'MMM dd'),
           applications: applicationsCount,
           rejections: rejectionsCount,
-          avgReviewTime,
+          interviews: interviewsCount,
+          offers: offersCount,
+          responses: responsesCount,
+          pending: pendingCount,
         };
       });
 
@@ -112,8 +128,13 @@ export const ApplicationAnalyticsChart: React.FC = () => {
   // Calculate summary statistics
   const totalApplications = chartData.reduce((sum, day) => sum + day.applications, 0);
   const totalRejections = chartData.reduce((sum, day) => sum + day.rejections, 0);
+  const totalInterviews = chartData.reduce((sum, day) => sum + day.interviews, 0);
+  const totalOffers = chartData.reduce((sum, day) => sum + day.offers, 0);
+  const totalResponses = chartData.reduce((sum, day) => sum + day.responses, 0);
+  const currentPending = chartData.length > 0 ? chartData[chartData.length - 1].pending : 0;
   const daysSinceFirstApplication = dateRange ? differenceInDays(new Date(), dateRange.start) : 0;
   const applicationsPerWeek = daysSinceFirstApplication > 0 ? (totalApplications / (daysSinceFirstApplication / 7)).toFixed(1) : '0';
+  const responseRate = totalApplications > 0 ? ((totalResponses / totalApplications) * 100).toFixed(1) : '0';
 
   return (
     <Card>
@@ -127,20 +148,40 @@ export const ApplicationAnalyticsChart: React.FC = () => {
         {/* Summary Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{totalApplications}</div>
-            <div className="text-sm text-muted-foreground">Total Applications</div>
+            <div className="text-2xl font-bold text-blue-600">{totalApplications}</div>
+            <div className="text-sm text-gray-600">Total Applications</div>
+            <div className="text-xs text-gray-500">{applicationsPerWeek}/week</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-destructive">{totalRejections}</div>
-            <div className="text-sm text-muted-foreground">Rejections</div>
+            <div className="text-2xl font-bold text-green-600">{totalResponses}</div>
+            <div className="text-sm text-gray-600">Responses</div>
+            <div className="text-xs text-gray-500">{responseRate}% rate</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{totalApplications - totalRejections}</div>
-            <div className="text-sm text-muted-foreground">Still Pending</div>
+            <div className="text-2xl font-bold text-yellow-600">{totalInterviews}</div>
+            <div className="text-sm text-gray-600">Interviews</div>
+            <div className="text-xs text-gray-500">{totalApplications > 0 ? ((totalInterviews / totalApplications) * 100).toFixed(1) : '0'}% rate</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{applicationsPerWeek}</div>
-            <div className="text-sm text-muted-foreground">Per Week</div>
+            <div className="text-2xl font-bold text-purple-600">{totalOffers}</div>
+            <div className="text-sm text-gray-600">Offers</div>
+            <div className="text-xs text-gray-500">{totalApplications > 0 ? ((totalOffers / totalApplications) * 100).toFixed(1) : '0'}% rate</div>
+          </div>
+        </div>
+        
+        {/* Additional Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600">{totalRejections}</div>
+            <div className="text-sm text-gray-600">Rejections</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600">{currentPending}</div>
+            <div className="text-sm text-gray-600">Currently Pending</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-indigo-600">{daysSinceFirstApplication}</div>
+            <div className="text-sm text-gray-600">Days Active</div>
           </div>
         </div>
 
@@ -166,26 +207,50 @@ export const ApplicationAnalyticsChart: React.FC = () => {
               <Line
                 type="monotone"
                 dataKey="applications"
-                stroke="hsl(var(--primary))"
+                stroke="#3b82f6" // blue-500
                 strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
                 name="Applications Sent"
               />
               <Line
                 type="monotone"
-                dataKey="rejections"
-                stroke="hsl(var(--destructive))"
+                dataKey="responses"
+                stroke="#10b981" // green-600
                 strokeWidth={2}
-                dot={{ fill: 'hsl(var(--destructive))', strokeWidth: 2, r: 4 }}
+                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                name="Responses Received"
+              />
+              <Line
+                type="monotone"
+                dataKey="interviews"
+                stroke="#eab308" // yellow-600
+                strokeWidth={2}
+                dot={{ fill: '#eab308', strokeWidth: 2, r: 4 }}
+                name="Interviews"
+              />
+              <Line
+                type="monotone"
+                dataKey="offers"
+                stroke="#8b5cf6" // purple-500
+                strokeWidth={2}
+                dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                name="Offers"
+              />
+              <Line
+                type="monotone"
+                dataKey="rejections"
+                stroke="#ef4444" // red-500
+                strokeWidth={2}
+                dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
                 name="Rejections"
               />
               <Line
                 type="monotone"
-                dataKey="avgReviewTime"
-                stroke="hsl(var(--secondary-foreground))"
+                dataKey="pending"
+                stroke="#f97316" // orange-500
                 strokeWidth={2}
-                dot={{ fill: 'hsl(var(--secondary-foreground))', strokeWidth: 2, r: 4 }}
-                name="Avg Review Time (days)"
+                dot={{ fill: '#f97316', strokeWidth: 2, r: 4 }}
+                name="Pending Applications"
               />
             </LineChart>
           </ResponsiveContainer>

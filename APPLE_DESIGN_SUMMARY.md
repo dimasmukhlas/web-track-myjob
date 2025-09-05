@@ -208,3 +208,4 @@ The design successfully balances **aesthetics** with **functionality**, creating
 
 *Built with ❤️ following Apple's design principles*
 
+

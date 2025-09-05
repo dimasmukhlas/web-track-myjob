@@ -1,5 +1,8 @@
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { JobApplicationsList } from '@/components/JobApplicationsList';
+import { AreaOfWorkRadarChart } from '@/components/AreaOfWorkRadarChart';
+import { ReviewTimeChart } from '@/components/ReviewTimeChart';
+import { CompanyShowcase } from '@/components/CompanyShowcase';
 import { Button } from '@/components/ui/button';
 import { LogOut, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -76,8 +79,22 @@ const Index = () => {
         <div className="mb-8">
           <DebugUserInfo />
         </div>
+        
+        {/* Analytics Section */}
+        <div className="grid gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <AreaOfWorkRadarChart />
+            <ReviewTimeChart />
+          </div>
+        </div>
+        
         <div className="apple-slide-up">
           <JobApplicationsList />
+        </div>
+        
+        {/* Company Showcase */}
+        <div className="mt-8">
+          <CompanyShowcase />
         </div>
       </main>
     </div>

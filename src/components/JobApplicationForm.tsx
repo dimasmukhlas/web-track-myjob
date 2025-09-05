@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { db } from '@/integrations/firebase/database';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, ChevronDown, ChevronRight, Calendar, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { FileUpload } from '@/components/FileUpload';
 import { useAutocompleteData } from '@/hooks/useAutocompleteData';
@@ -18,6 +19,7 @@ import { useAutocompleteData } from '@/hooks/useAutocompleteData';
 const formSchema = z.object({
   company_name: z.string().min(1, 'Company name is required'),
   position_title: z.string().min(1, 'Position title is required'),
+  area_of_work: z.string().optional(),
   job_description: z.string().optional(),
   application_date: z.string().min(1, 'Application date is required'),
   application_status: z.enum(['applied', 'interview', 'offer', 'rejected', 'withdrawn']),
@@ -31,6 +33,15 @@ const formSchema = z.object({
   contact_email: z.string().email().optional().or(z.literal('')),
   notes: z.string().optional(),
   follow_up_date: z.string().optional(),
+  // Process dates
+  application_sent_date: z.string().optional(),
+  first_response_date: z.string().optional(),
+  interview_scheduled_date: z.string().optional(),
+  interview_completed_date: z.string().optional(),
+  offer_received_date: z.string().optional(),
+  offer_deadline_date: z.string().optional(),
+  rejection_date: z.string().optional(),
+  withdrawal_date: z.string().optional(),
   cv_file_url: z.string().optional(),
   cv_file_name: z.string().optional(),
   cover_letter_url: z.string().optional(),
@@ -48,14 +59,19 @@ interface JobApplicationFormProps {
 export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: JobApplicationFormProps) {
   const [open, setOpen] = useState(!!editingApplication);
   const [loading, setLoading] = useState(false);
+  const [processDatesOpen, setProcessDatesOpen] = useState(false);
+  const [nextApplication, setNextApplication] = useState<any>(null);
+  const [loadingNext, setLoadingNext] = useState(false);
+  const [missingDataCount, setMissingDataCount] = useState(0);
   const { toast } = useToast();
-  const { companies, positions, applicationMethods, loading: autocompleteLoading } = useAutocompleteData();
+  const { companies, positions, applicationMethods, areasOfWork, loading: autocompleteLoading } = useAutocompleteData();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: editingApplication ? {
       company_name: editingApplication.company_name,
       position_title: editingApplication.position_title,
+      area_of_work: editingApplication.area_of_work || '',
       job_description: editingApplication.job_description || '',
       application_date: editingApplication.application_date,
       application_status: editingApplication.application_status,
@@ -69,6 +85,15 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       contact_email: editingApplication.contact_email || '',
       notes: editingApplication.notes || '',
       follow_up_date: editingApplication.follow_up_date || '',
+      // Process dates
+      application_sent_date: editingApplication.application_sent_date || '',
+      first_response_date: editingApplication.first_response_date || '',
+      interview_scheduled_date: editingApplication.interview_scheduled_date || '',
+      interview_completed_date: editingApplication.interview_completed_date || '',
+      offer_received_date: editingApplication.offer_received_date || '',
+      offer_deadline_date: editingApplication.offer_deadline_date || '',
+      rejection_date: editingApplication.rejection_date || '',
+      withdrawal_date: editingApplication.withdrawal_date || '',
       cv_file_url: editingApplication.cv_file_url || '',
       cv_file_name: editingApplication.cv_file_name || '',
       cover_letter_url: editingApplication.cover_letter_url || '',
@@ -86,6 +111,7 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
     const applicationData = {
       company_name: data.company_name,
       position_title: data.position_title,
+      area_of_work: data.area_of_work || null,
       job_description: data.job_description || null,
       application_date: data.application_date,
       application_status: data.application_status,
@@ -99,6 +125,15 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       contact_email: data.contact_email || null,
       notes: data.notes || null,
       follow_up_date: data.follow_up_date || null,
+      // Process dates
+      application_sent_date: data.application_sent_date || null,
+      first_response_date: data.first_response_date || null,
+      interview_scheduled_date: data.interview_scheduled_date || null,
+      interview_completed_date: data.interview_completed_date || null,
+      offer_received_date: data.offer_received_date || null,
+      offer_deadline_date: data.offer_deadline_date || null,
+      rejection_date: data.rejection_date || null,
+      withdrawal_date: data.withdrawal_date || null,
       cv_file_url: data.cv_file_url || null,
       cv_file_name: data.cv_file_name || null,
       cover_letter_url: data.cover_letter_url || null,
@@ -116,9 +151,60 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
         title: 'Success',
         description: `Job application ${editingApplication ? 'updated' : 'added'} successfully!`,
       });
-      form.reset();
-      setOpen(false);
-      onSuccess();
+      
+      // If we have a next application queued, load it automatically
+      if (nextApplication) {
+        // Update the current editing application to the next one
+        const nextApp = nextApplication;
+        setNextApplication(null);
+        
+        // Update form with next application data
+        form.reset({
+          company_name: nextApp.company_name,
+          position_title: nextApp.position_title,
+          area_of_work: nextApp.area_of_work || '',
+          job_description: nextApp.job_description || '',
+          application_date: nextApp.application_date,
+          application_status: nextApp.application_status,
+          job_location: nextApp.job_location || '',
+          job_link: nextApp.job_link || '',
+          salary_range: nextApp.salary_range || '',
+          job_type: nextApp.job_type || undefined,
+          work_arrangement: nextApp.work_arrangement || undefined,
+          application_method: nextApp.application_method || '',
+          contact_person: nextApp.contact_person || '',
+          contact_email: nextApp.contact_email || '',
+          notes: nextApp.notes || '',
+          follow_up_date: nextApp.follow_up_date || '',
+          // Process dates
+          application_sent_date: nextApp.application_sent_date || '',
+          first_response_date: nextApp.first_response_date || '',
+          interview_scheduled_date: nextApp.interview_scheduled_date || '',
+          interview_completed_date: nextApp.interview_completed_date || '',
+          offer_received_date: nextApp.offer_received_date || '',
+          offer_deadline_date: nextApp.offer_deadline_date || '',
+          rejection_date: nextApp.rejection_date || '',
+          withdrawal_date: nextApp.withdrawal_date || '',
+          cv_file_url: nextApp.cv_file_url || '',
+          cv_file_name: nextApp.cv_file_name || '',
+          cover_letter_url: nextApp.cover_letter_url || '',
+          cover_letter_name: nextApp.cover_letter_name || '',
+        });
+
+        // Update the editing application reference
+        if (onSuccess) {
+          onSuccess(); // This will trigger a re-render with the new application
+        }
+
+        toast({
+          title: 'Next Application Loaded',
+          description: `Now editing ${nextApp.company_name} - ${nextApp.position_title}`,
+        });
+      } else {
+        form.reset();
+        setOpen(false);
+        onSuccess();
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -129,6 +215,88 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
     
     setLoading(false);
   };
+
+  // Load next application with missing data
+  const loadNextApplication = async () => {
+    setLoadingNext(true);
+    try {
+      const applicationsWithMissingData = await db.getApplicationsWithMissingData(editingApplication?.id);
+      setMissingDataCount(applicationsWithMissingData.length);
+      
+      if (applicationsWithMissingData.length > 0) {
+        const nextApp = applicationsWithMissingData[0];
+        setNextApplication(nextApp);
+        
+        // Update form with next application data
+        form.reset({
+          company_name: nextApp.company_name,
+          position_title: nextApp.position_title,
+          area_of_work: nextApp.area_of_work || '',
+          job_description: nextApp.job_description || '',
+          application_date: nextApp.application_date,
+          application_status: nextApp.application_status,
+          job_location: nextApp.job_location || '',
+          job_link: nextApp.job_link || '',
+          salary_range: nextApp.salary_range || '',
+          job_type: nextApp.job_type || undefined,
+          work_arrangement: nextApp.work_arrangement || undefined,
+          application_method: nextApp.application_method || '',
+          contact_person: nextApp.contact_person || '',
+          contact_email: nextApp.contact_email || '',
+          notes: nextApp.notes || '',
+          follow_up_date: nextApp.follow_up_date || '',
+          // Process dates
+          application_sent_date: nextApp.application_sent_date || '',
+          first_response_date: nextApp.first_response_date || '',
+          interview_scheduled_date: nextApp.interview_scheduled_date || '',
+          interview_completed_date: nextApp.interview_completed_date || '',
+          offer_received_date: nextApp.offer_received_date || '',
+          offer_deadline_date: nextApp.offer_deadline_date || '',
+          rejection_date: nextApp.rejection_date || '',
+          withdrawal_date: nextApp.withdrawal_date || '',
+          cv_file_url: nextApp.cv_file_url || '',
+          cv_file_name: nextApp.cv_file_name || '',
+          cover_letter_url: nextApp.cover_letter_url || '',
+          cover_letter_name: nextApp.cover_letter_name || '',
+        });
+
+        toast({
+          title: 'Next Application Loaded',
+          description: `Loaded ${nextApp.company_name} - ${nextApp.position_title}`,
+        });
+      } else {
+        toast({
+          title: 'All Done!',
+          description: 'No more applications with missing data found.',
+        });
+        setNextApplication(null);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load next application.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingNext(false);
+    }
+  };
+
+  // Load missing data count when component mounts or editingApplication changes
+  useEffect(() => {
+    const loadMissingDataCount = async () => {
+      try {
+        const applicationsWithMissingData = await db.getApplicationsWithMissingData(editingApplication?.id);
+        setMissingDataCount(applicationsWithMissingData.length);
+      } catch (error) {
+        console.error('Error loading missing data count:', error);
+      }
+    };
+
+    if (editingApplication) {
+      loadMissingDataCount();
+    }
+  }, [editingApplication]);
 
   // Close dialog when editingApplication changes to null
   useEffect(() => {
@@ -217,6 +385,28 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="area_of_work"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-700">Area of Work</FormLabel>
+                  <FormControl>
+                    <Combobox
+                      options={areasOfWork}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select or enter area of work..."
+                      searchPlaceholder="Search areas of work..."
+                      emptyText="No areas of work found."
+                      allowCustom={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -377,6 +567,141 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
               />
             </div>
 
+            {/* Process Dates Section */}
+            <Collapsible open={processDatesOpen} onOpenChange={setProcessDatesOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between h-12 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Process Timeline Dates
+                  </div>
+                  {processDatesOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-4">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Track important dates throughout your application process. These dates help you understand timing patterns and improve your job search strategy.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="application_sent_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Application Sent Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="first_response_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">First Response Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="interview_scheduled_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Interview Scheduled Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="interview_completed_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Interview Completed Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="offer_received_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Offer Received Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="offer_deadline_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Offer Deadline Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rejection_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Rejection Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="withdrawal_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-gray-700">Withdrawal Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -494,6 +819,45 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
                 </FormItem>
               )}
             />
+
+            {/* Progress Indicator and Next Application Button */}
+            {editingApplication && (
+              <div className="pt-6 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    {missingDataCount > 0 ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm text-gray-600">
+                          {missingDataCount} application{missingDataCount !== 1 ? 's' : ''} with missing data
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-green-600">All applications are complete!</span>
+                      </>
+                    )}
+                  </div>
+                  {missingDataCount > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={loadNextApplication}
+                      disabled={loadingNext}
+                      className="apple-button border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700 h-10 px-4"
+                    >
+                      {loadingNext ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                      )}
+                      Next Application
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100">
               <Button 

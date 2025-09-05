@@ -110,3 +110,4 @@ If you still see 400 errors:
 3. Check the browser network tab for specific error details
 4. Ensure Firebase Auth is working correctly
 
+
