@@ -105,8 +105,74 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
     },
   });
 
+  // Watch for changes in rejection_date and withdrawal_date to auto-update status
+  const rejectionDate = form.watch('rejection_date');
+  const withdrawalDate = form.watch('withdrawal_date');
+
+  useEffect(() => {
+    // If rejection date is set, automatically set status to rejected
+    if (rejectionDate && rejectionDate.trim() !== '') {
+      form.setValue('application_status', 'rejected');
+      // Clear withdrawal date if rejection date is set
+      if (withdrawalDate) {
+        form.setValue('withdrawal_date', '');
+        toast({
+          title: "Status Updated",
+          description: "Status automatically set to 'Rejected' and withdrawal date cleared.",
+        });
+      } else {
+        toast({
+          title: "Status Updated",
+          description: "Status automatically set to 'Rejected' because rejection date is provided.",
+        });
+      }
+    }
+    // If withdrawal date is set, automatically set status to withdrawn
+    else if (withdrawalDate && withdrawalDate.trim() !== '') {
+      form.setValue('application_status', 'withdrawn');
+      // Clear rejection date if withdrawal date is set
+      if (rejectionDate) {
+        form.setValue('rejection_date', '');
+        toast({
+          title: "Status Updated",
+          description: "Status automatically set to 'Withdrawn' and rejection date cleared.",
+        });
+      } else {
+        toast({
+          title: "Status Updated",
+          description: "Status automatically set to 'Withdrawn' because withdrawal date is provided.",
+        });
+      }
+    }
+  }, [rejectionDate, withdrawalDate, form, toast]);
+
   const onSubmit = async (data: FormData) => {
     setLoading(true);
+
+    // Auto-update status based on process dates
+    let finalStatus = data.application_status;
+    let finalRejectionDate = data.rejection_date;
+    let finalWithdrawalDate = data.withdrawal_date;
+
+    // If rejection date is set, automatically set status to rejected
+    if (data.rejection_date && data.rejection_date.trim() !== '') {
+      finalStatus = 'rejected';
+      // Clear withdrawal date if rejection date is set
+      finalWithdrawalDate = null;
+    }
+    // If withdrawal date is set, automatically set status to withdrawn
+    else if (data.withdrawal_date && data.withdrawal_date.trim() !== '') {
+      finalStatus = 'withdrawn';
+      // Clear rejection date if withdrawal date is set
+      finalRejectionDate = null;
+    }
+    // If status is changed from rejected/withdrawn to something else, clear the respective date
+    else if (data.application_status !== 'rejected' && data.rejection_date) {
+      finalRejectionDate = null;
+    }
+    else if (data.application_status !== 'withdrawn' && data.withdrawal_date) {
+      finalWithdrawalDate = null;
+    }
 
     const applicationData = {
       company_name: data.company_name,
@@ -114,7 +180,7 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       area_of_work: data.area_of_work || null,
       job_description: data.job_description || null,
       application_date: data.application_date,
-      application_status: data.application_status,
+      application_status: finalStatus,
       job_location: data.job_location || null,
       job_link: data.job_link || null,
       salary_range: data.salary_range || null,
@@ -132,8 +198,8 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
       interview_completed_date: data.interview_completed_date || null,
       offer_received_date: data.offer_received_date || null,
       offer_deadline_date: data.offer_deadline_date || null,
-      rejection_date: data.rejection_date || null,
-      withdrawal_date: data.withdrawal_date || null,
+      rejection_date: finalRejectionDate || null,
+      withdrawal_date: finalWithdrawalDate || null,
       cv_file_url: data.cv_file_url || null,
       cv_file_name: data.cv_file_name || null,
       cover_letter_url: data.cover_letter_url || null,
@@ -456,6 +522,16 @@ export function JobApplicationForm({ onSuccess, editingApplication, onCancel }: 
                         <SelectItem value="withdrawn">Withdrawn</SelectItem>
                       </SelectContent>
                     </Select>
+                    {(rejectionDate && rejectionDate.trim() !== '') && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        💡 Status automatically set to "Rejected" because rejection date is provided
+                      </p>
+                    )}
+                    {(withdrawalDate && withdrawalDate.trim() !== '') && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        💡 Status automatically set to "Withdrawn" because withdrawal date is provided
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
